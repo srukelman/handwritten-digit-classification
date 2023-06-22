@@ -111,7 +111,7 @@ if __name__ == "__main__":
     t1.join()
     t2.join()
     t3.join()
-    
+
     plt.rcParams["figure.figsize"] = [7.00, 7.00]
     plt.rcParams["figure.autolayout"] = True
     plt.xlim(0,1800)
@@ -123,9 +123,14 @@ if __name__ == "__main__":
     plt.ylabel("Accuracy")
     plt.legend()
     plt.show()
-    dataframe = pd.DataFrame(np.array([input_data, svc_data, dtc_data, rfc_data]),
-                             columns=["input", "svc", "dtc", "rfc"])
-    dataframe.to_csv('/figures/out.csv')
+    d = {
+        'input_data': input_data,
+        'svc': svc_data,
+        'dtc': dtc_data,
+        'rfc': rfc_data 
+    }
+    dataframe = pd.DataFrame(d)
+    dataframe.to_csv('out.csv', index=False)
 
 
 
