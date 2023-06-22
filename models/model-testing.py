@@ -4,10 +4,9 @@ from sklearn import svm
 from sklearn.metrics import accuracy_score
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
-import tensorflow as tf
-from tensorflow import keras
-from keras import layers
+import pandas as pd
 import numpy as np
+import threading
 
 def load_data():
     digits = datasets.load_digits()
@@ -58,69 +57,61 @@ def rfc_classify(dataset, targets, training_size):
     accuracy = test_model(rfc, dataset, targets, training_size)
     return accuracy
 
-def do_nonlinreg(input_data, model_data):
-    normalizer = tf.keras.layers.Normalization(input_shape=[1,], axis = None)
-    normalizer.adapt(np.array(input_data))
-    dnn_model = build_and_compile_model(normalizer)
-    trained_model = train_model(dnn_model, model_data, input_data)
-    x = tf.linspace(0.0, 1800, 1801)
-    y = trained_model.predict(x)
-    return x,y
-    
+def do_svc(dataset, targets):
+    global svc_data, input_data
+    for i in range (10, 1800, 10):
+        training_size = i
+        svc = svc_classify(dataset, targets, training_size)
+        svc_data.append(svc)
+        input_data.append(training_size)
 
-def build_and_compile_model(norm):
-    model = keras.Sequential([
-        norm,
-        layers.Dense(64, activation = 'relu'),
-        layers.Dense(64, activation = 'relu'),
-        layers.Dense(1)
-    ])
-    model.compile(loss='mean_absolute_error', optimizer=tf.keras.optimizers.Adam(0.001))
-    return model
+def do_dtc(dataset, targets):
+    global dtc_data
+    for i in range (10, 1800, 10):
+        training_size = i
+        dtc = dtc_classify(dataset, targets, training_size)
+        dtc_data.append(dtc)
 
-def train_model(dnn_model, model_data, input_data):
-    history = dnn_model.fit(
-        np.array(input_data),
-        np.array(model_data),
-        validation_split = 0.2,
-        verbose = 0, epochs = 100)
-    return dnn_model
+def do_rfc(dataset, targets):
+    global rfc_data
+    for i in range (10, 1800, 10):
+        training_size = i
+        rfc = rfc_classify(dataset, targets, training_size)
+        rfc_data.append(rfc)
 
 if __name__ == "__main__":
+    global svc_data, dtc_data, rfc_data, input_data
     digits, dataset, targets = load_data()
     training_size = 1600
-    view_digit(digits, 17)
-    print(svc_classify(dataset, targets, training_size))
-    print(dtc_classify(dataset, targets, training_size))
-    print(rfc_classify(dataset, targets, training_size))
-    plt.rcParams["figure.figsize"] = [7.00, 7.00]
-    plt.rcParams["figure.autolayout"] = True
-    plt.xlim(0,1800)
-    plt.ylim(0, 1.0)
+    # view_digit(digits, 17)
+    # print(svc_classify(dataset, targets, training_size))
+    # print(dtc_classify(dataset, targets, training_size))
+    # print(rfc_classify(dataset, targets, training_size))
+    
     
     svc_data = list()
     dtc_data = list()
     rfc_data = list()
     input_data = list()
-    for i in range (10, 1800, 10):
-        training_size = i
-        svc = svc_classify(dataset, targets, training_size)
-        dtc = dtc_classify(dataset, targets, training_size)
-        rfc = rfc_classify(dataset, targets, training_size)
-        svc_data.append(svc)
-        dtc_data.append(dtc)
-        rfc_data.append(rfc)
-        input_data.append(training_size)
-    plt.scatter(input_data,svc_data, label='SVC')
-    plt.scatter(input_data,dtc_data, label='DTC')
-    plt.scatter(input_data,rfc_data, label='RFC')
-    plt.xlabel("Training Set Size")
-    plt.ylabel("Accuracy")
-    plt.legend()
-    plt.show()
-    svc_x, svc_y = do_nonlinreg(input_data, svc_data)
-    dtc_x, dtc_y = do_nonlinreg(input_data, dtc_data)
-    rfc_x, rfc_y = do_nonlinreg(input_data, rfc_data)
+    # for i in range (10, 1800, 10):
+    #     training_size = i
+    #     svc = svc_classify(dataset, targets, training_size)
+    #     dtc = dtc_classify(dataset, targets, training_size)
+    #     rfc = rfc_classify(dataset, targets, training_size)
+    #     svc_data.append(svc)
+    #     dtc_data.append(dtc)
+    #     rfc_data.append(rfc)
+    #     input_data.append(training_size)
+    t1 = threading.Thread(target = lambda: do_svc(dataset=dataset, targets=targets))
+    t2 = threading.Thread(target = lambda: do_dtc(dataset=dataset, targets=targets))
+    t3 = threading.Thread(target = lambda: do_rfc(dataset=dataset, targets=targets))
+    t1.start()
+    t2.start()
+    t3.start()
+    t1.join()
+    t2.join()
+    t3.join()
+    
     plt.rcParams["figure.figsize"] = [7.00, 7.00]
     plt.rcParams["figure.autolayout"] = True
     plt.xlim(0,1800)
@@ -128,13 +119,15 @@ if __name__ == "__main__":
     plt.scatter(input_data,svc_data, label='SVC')
     plt.scatter(input_data,dtc_data, label='DTC')
     plt.scatter(input_data,rfc_data, label='RFC')
-    plt.plot(svc_x, svc_y, label="SVC")
-    plt.plot(dtc_x, dtc_y, label="DTC")
-    plt.plot(rfc_x, rfc_y, label="RFC")
     plt.xlabel("Training Set Size")
     plt.ylabel("Accuracy")
     plt.legend()
     plt.show()
+    dataframe = pd.DataFrame(np.array([input_data, svc_data, dtc_data, rfc_data]),
+                             columns=["input", "svc", "dtc", "rfc"])
+    dataframe.to_csv('/figures/out.csv')
+
+
 
     
 
